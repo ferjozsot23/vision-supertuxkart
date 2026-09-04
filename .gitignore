@@ -1,20 +1,11 @@
-# ── Datos ────────────────────────────────────────────────────────────────────
-# El dataset son 342 MB; se obtiene del profesor, no del repositorio.
 dataset/
 dataset.zip
 
-# ── Modelo entrenado ─────────────────────────────────────────────────────────
-# Pesa 118 MiB y GitHub rechaza archivos de mas de 100 MiB. Se publica como
-# release asset; predict.py lo descarga solo desde ahi.
 *.th
 
-# ── Artefactos de las corridas ───────────────────────────────────────────────
-# Checkpoints, modelos intermedios del barrido y logs del servidor. Los
-# resultados numericos si se versionan, en experimentos/resultados/.
 salidas/
 logs/
 
-# ── Entorno ──────────────────────────────────────────────────────────────────
 __pycache__/
 *.pyc
 .ipynb_checkpoints/

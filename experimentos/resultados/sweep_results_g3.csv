@@ -1,0 +1,2 @@
+combo,size,lr,base,weight_power,scale_min,augment,epochs,best_epoch,best_miou,iou_background,iou_track,iou_kart,iou_pickup,iou_nitro,iou_bomb,iou_projectile,minutos,estado
+s256_lr0.0001_b64_p0.30_sc1.00,256x256,0.0001,64,0.3,1.0,1,40,21,0.4525519013404846,0.7360613346099854,0.6947183012962341,0.6805852055549622,0.5632706880569458,0.46307340264320374,0.030154310166835785,0.0,3.05,ok

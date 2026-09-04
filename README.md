@@ -52,19 +52,12 @@ bajarlo). Las imágenes de `ejemplos/` son de circuitos que el modelo nunca vio.
 ```python
 from models import load_model
 
-model = load_model('model.th')      # sin argumentos
-pred  = model(x).argmax(1)          # x: (B,3,H,W) en [0,1]  ->  (B,H,W)
+model = load_model('model.th')
+pred  = model(x).argmax(1)
 ```
 
-Tres cosas que hacen que esto funcione en cualquier máquina:
-
-- **La imagen entra cruda en `[0,1]`.** La normalización ImageNet vive dentro del
-  `forward` como buffers del modelo, así que viaja con los pesos.
-- **Cualquier resolución de entrada.** El `forward` rellena a múltiplo de 16 y
-  recorta de vuelta. Verificado desde 96×128 hasta 1080×1920.
-- **`load_model()` deduce la arquitectura de los propios pesos**, así que no puede
-  fallar por un desajuste entre el `--base` con el que se entrenó y el que
-  espera el constructor.
+`x` es un tensor `(B,3,H,W)` en `[0,1]` y la salida `(B,H,W)` con el índice de
+clase de cada píxel. Cualquier resolución vale.
 
 ---
 
@@ -88,10 +81,6 @@ mIoU alto y falso.
 |---|---|---|
 | entrenamiento | `abyss`, `gran_paradiso_island`, `hacienda`, `olivermath` | 1000 |
 | validación | `lighthouse`, `volcano_island` | 500 |
-
-> **Cuánto vale un decimal aquí.** Al repetir una configuración idéntica dos
-> veces obtuvimos 0.4690 y 0.4298: **±0.04 de varianza** por inicialización y
-> orden de los lotes. Las diferencias menores que eso no son significativas.
 
 ---
 
@@ -129,33 +118,22 @@ dos a la vez.
 
 ## Arquitectura
 
-U-Net de 4 niveles con *skip connections*, escrita desde cero. Las skips son el
-motivo de elegir U-Net sobre un FCN: recuperan el detalle fino que necesitan
-objetos de veinte píxeles como el nitro.
+U-Net de 4 niveles escrita desde cero.
 
-```
-enc1  64 ──────────────────────────────────┐ skip
-  ↓ pool                                   │
-enc2 128 ────────────────────────┐ skip    │
-  ↓ pool                         │         │
-enc3 256 ─────────────┐ skip     │         │
-  ↓ pool              │          │         │
-enc4 512 ──┐ skip     │          │         │
-  ↓ pool   │          │          │         │
-bottleneck 1024       │          │         │
-  ↑ upconv │          │          │         │
-dec4  512 ─┘          │          │         │
-  ↑ upconv            │          │         │
-dec3  256 ────────────┘          │         │
-  ↑ upconv                       │         │
-dec2  128 ───────────────────────┘         │
-  ↑ upconv                                 │
-dec1   64 ─────────────────────────────────┘
-  ↓
-conv 1×1  →  7 logits por píxel
-```
+- **Encoder**: cuatro bloques de 64, 128, 256 y 512 canales. Cada bloque son dos
+  convoluciones 3×3 con BatchNorm y ReLU, seguidas de max-pooling de 2.
+- **Cuello de botella**: 1024 canales.
+- **Decoder**: simétrico, con convoluciones transpuestas. En cada nivel concatena
+  la *skip connection* del bloque correspondiente del encoder.
+- **Salida**: convolución 1×1 a 7 logits por píxel, sin softmax —
+  `CrossEntropyLoss` espera logits crudos.
 
-Sin softmax al final: `CrossEntropyLoss` espera logits crudos.
+Las *skip connections* son el motivo de elegir U-Net sobre un FCN: recuperan el
+detalle fino que necesitan objetos de veinte píxeles como el nitro.
+
+El `forward` normaliza la entrada con buffers propios, la rellena a múltiplo de
+16 y recorta el resultado al tamaño original, de modo que el modelo acepta
+cualquier resolución y la normalización viaja dentro de los pesos.
 
 ---
 

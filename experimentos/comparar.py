@@ -28,7 +28,8 @@ SHORT = ['bg', 'trck', 'kart', 'pick', 'nitr', 'bomb', 'proj']
 
 def read_runs(path):
     if not os.path.exists(path):
-        raise SystemExit('no existe %s (traelo con: bash servidor/recoger.sh)' % path)
+        raise SystemExit('No existe %s. Se descarga con: bash servidor/recoger.sh'
+                         % path)
     with open(path) as fh:
         return list(csv.DictReader(fh))
 

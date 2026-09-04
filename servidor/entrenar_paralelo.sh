@@ -9,7 +9,6 @@
 #   STK_IMAGE=imagen:tag       forzar imagen
 set -euo pipefail
 
-# Los scripts viven en servidor/; la raiz del proyecto es el directorio padre.
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJ"
 mkdir -p logs salidas experimentos/resultados
@@ -24,9 +23,6 @@ fi
 [ -d "$DATA_ROOT" ] || { echo "ERROR: no encuentro dense_data" >&2; exit 1; }
 echo "dataset : $DATA_ROOT"
 
-# El DGX es COMPARTIDO: otras personas tienen procesos en algunas GPUs. Pedir
-# una GPU llena no da un error claro, da un OutOfMemory que parece culpa de
-# nuestro modelo. Asi que se comprueba la memoria libre antes de repartir.
 MIN_FREE="${STK_MIN_FREE_MB:-10000}"
 if [ -n "${STK_GPUS:-}" ]; then
   GPUS="$STK_GPUS"
@@ -67,11 +63,7 @@ TS="$(date +%Y%m%d_%H%M%S)"
 i=0
 for g in $GPUS; do
   NAME="stk_g$g"
-  # OJO: solo se borra stk_gN. El contenedor 'stk' del barrido secuencial
-  # se queda intacto corriendo en la GPU 0.
   docker rm -f "$NAME" >/dev/null 2>&1 || true
-  # Cada particion escribe en SUS ficheros: dos procesos escribiendo el mismo
-  # csv a la vez lo dejarian entrelazado y corrupto.
   docker run -d --name "$NAME" \
     --gpus all -e CUDA_VISIBLE_DEVICES="$g" \
     --ipc=host -u "$(id -u):$(id -g)" \

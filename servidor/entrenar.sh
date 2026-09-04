@@ -12,17 +12,12 @@
 #   STK_GPU=3                        usar otra GPU (por defecto la 0)
 set -euo pipefail
 
-# Los scripts viven en servidor/; la raiz del proyecto es el directorio padre.
 PROJ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJ"
 mkdir -p logs salidas experimentos/resultados
 
-# ---- 1. localizar el dataset -------------------------------------------------
 DATA_ROOT="${STK_DATA_ROOT:-}"
 if [ -z "$DATA_ROOT" ]; then
-  # Rutas probables primero. Un 'find' sobre /data o /mnt en un DGX recorre
-  # montajes de red enormes y ademas no termina al primer acierto (la salida a
-  # tuberia va en buffer), asi que se cuelga.
   for c in "$PROJ/dataset/dense_data" "$PROJ/dense_data" \
            /home/fsotoj/proyecto_stk/dataset/dense_data \
            /home/fsotoj/dataset/dense_data /home/fsotoj/dense_data; do
@@ -45,11 +40,6 @@ echo "dataset : $DATA_ROOT  ($NTRACKS tracks)"
 TS="$(date +%Y%m%d_%H%M%S)"
 GPU="${STK_GPU:-0}"
 
-# Los defaults van PRIMERO y los flags del usuario al final: argparse se queda
-# con la ultima aparicion, asi que lo que pases por la linea de comandos gana.
-#
-# 'sweep' como primer argumento lanza el barrido de hiperparametros en lugar de
-# una sola corrida; el resto de argumentos pasan tal cual a sweep.py.
 if [ "${1:-}" = "sweep" ]; then
   shift
   SCRIPT=experimentos/sweep.py
@@ -65,7 +55,6 @@ else
 fi
 echo "script  : $SCRIPT"
 
-# ---- 2. python nativo con torch? --------------------------------------------
 PY="$(command -v python3 || command -v python || true)"
 if [ -n "$PY" ] && "$PY" -c 'import torch' >/dev/null 2>&1; then
   echo "modo    : python nativo ($PY)"
@@ -80,15 +69,12 @@ if [ -n "$PY" ] && "$PY" -c 'import torch' >/dev/null 2>&1; then
   exit 0
 fi
 
-# ---- 3. si no, Docker --------------------------------------------------------
 command -v docker >/dev/null || { echo "ERROR: sin torch nativo y sin docker" >&2; exit 1; }
 echo "modo    : docker (el python del sistema no tiene torch)"
 
 IMAGE="${STK_IMAGE:-}"
 if [ -z "$IMAGE" ]; then
   echo "buscando una imagen local que traiga torch..."
-  # Solo imagenes ya descargadas: no se baja nada. Se prueban las mas probables
-  # primero (vllm y los contenedores de pytorch/nvidia estan construidos sobre torch).
   CANDS="$(docker images --format '{{.Repository}}:{{.Tag}}' \
            | grep -v '<none>' \
            | grep -iE 'pytorch|torch|vllm|cuda|nvidia|nemo|docling' | head -8)"
@@ -103,10 +89,6 @@ echo "imagen  : $IMAGE"
 echo "gpu     : $GPU (de 8; se limita con CUDA_VISIBLE_DEVICES para no acaparar la maquina)"
 
 docker rm -f stk >/dev/null 2>&1 || true
-# -u  : los archivos que escriba (model.th, logs) quedan a nombre de fsotoj, no de root.
-# -e HOME=/work : dentro del contenedor $HOME es /root y es EFIMERO; todo lo que
-#                 importe tiene que caer en el volumen montado.
-# --ipc=host : sin esto los workers del DataLoader mueren por /dev/shm pequeno.
 if ! docker run -d --name stk \
   --gpus all -e CUDA_VISIBLE_DEVICES="$GPU" \
   --ipc=host \

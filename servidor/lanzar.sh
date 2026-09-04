@@ -6,14 +6,11 @@
 #   bash servidor/lanzar.sh --size 256 256 --notes "corrida 2"
 set -euo pipefail
 
-# Se invoca como "bash servidor/lanzar.sh", pero debe subir la raiz del
-# proyecto, no la carpeta servidor/. Por eso se posiciona explicitamente.
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 SERVER=fsotoj@172.28.230.10
 REMOTE=/home/fsotoj/proyecto_stk
 
-# Una sola conexion ssh multiplexada para todo el script: pide la clave una vez.
 CTL="$HOME/.ssh/cm_stk_$$"
 mkdir -p "$HOME/.ssh"
 SSH=(ssh -o ControlMaster=auto -o "ControlPath=$CTL" -o ControlPersist=10m)
@@ -22,7 +19,6 @@ export RSYNC_RSH="ssh -o ControlMaster=auto -o ControlPath=$CTL -o ControlPersis
 
 "${SSH[@]}" "$SERVER" "mkdir -p '$REMOTE'"
 
-# ---- 1. dataset (solo la primera vez) ---------------------------------------
 if "${SSH[@]}" "$SERVER" "[ -d '$REMOTE/dataset/dense_data' ]"; then
   echo "==> el dataset ya esta en el servidor, no lo subo"
 else
@@ -44,21 +40,15 @@ for n in z.namelist():
       echo \"   tracks: \$(ls dataset/dense_data | tr '\n' ' ')\""
 fi
 
-# ---- 2. codigo ---------------------------------------------------------------
 echo "==> subiendo codigo"
 rsync -avz --exclude dataset --exclude 'dataset.zip' --exclude __pycache__ \
       --exclude salidas --exclude logs --exclude ejemplos --exclude '*.th' --exclude .DS_Store \
       --exclude '*.pdf' --exclude .claude --exclude .git --exclude docs \
       ./ "$SERVER:$REMOTE/"
 
-# ---- 3. lanzar ---------------------------------------------------------------
 echo "==> lanzando entrenamiento"
-# 'paralelo' como primer argumento reparte la rejilla entre varias GPUs.
 LAUNCHER=servidor/entrenar.sh
 if [ "${1:-}" = "paralelo" ]; then LAUNCHER=servidor/entrenar_paralelo.sh; shift; fi
-# Los argumentos cruzan dos shells (el local y el del servidor), asi que hay que
-# re-citarlos uno por uno. Con "$*" pelado, --notes "corrida 2 resolucion 256"
-# llegaba partido en cuatro palabras sueltas y argparse lo rechazaba.
 RARGS=""
 for a in "$@"; do RARGS="$RARGS $(printf '%q' "$a")"; done
 "${SSH[@]}" "$SERVER" "bash '$REMOTE/$LAUNCHER'$RARGS"

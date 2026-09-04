@@ -23,10 +23,10 @@ def ensure_model(path):
         return path
     if not MODEL_URL:
         sys.exit(
-            "No encuentro '%s'.\n"
-            "  - Descárgalo de la sección Releases del repositorio y déjalo aquí, o\n"
-            "  - exporta STK_MODEL_URL con su URL y se descargará solo." % path)
-    print('descargando el modelo (~118 MB)...', flush=True)
+            "No se encuentra '%s'.\n"
+            "  - Puede descargarse desde la sección Releases del repositorio, o\n"
+            "  - definir STK_MODEL_URL con su URL para descargarlo automáticamente." % path)
+    print('Descargando el modelo (~118 MB)...', flush=True)
 
     def _p(n, bs, total):
         if total > 0:
@@ -34,7 +34,7 @@ def ensure_model(path):
             print('\r  %d%%' % pct, end='', flush=True)
 
     urllib.request.urlretrieve(MODEL_URL, path, _p)
-    print('\r  listo         ')
+    print('\r  completado    ')
     return path
 
 
@@ -63,7 +63,7 @@ def main():
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     model = load_model(ensure_model(args.model), device=device)
-    print('modelo cargado en %s' % device)
+    print('Modelo cargado en %s' % device)
 
     if os.path.isdir(args.entrada):
         files = sorted(os.path.join(args.entrada, f) for f in os.listdir(args.entrada)
@@ -71,7 +71,7 @@ def main():
     else:
         files = [args.entrada]
     if not files:
-        sys.exit('no hay imágenes en %s' % args.entrada)
+        sys.exit('No se encontraron imágenes en %s' % args.entrada)
 
     outdir = args.out or (args.entrada if os.path.isdir(args.entrada)
                           else os.path.dirname(os.path.abspath(args.entrada)))

@@ -1,7 +1,4 @@
-# Mínimo para cargar el modelo y predecir
 torch>=1.13
 numpy>=1.21
 Pillow>=9.0
-
-# Solo para visualizar (eval.py, predict.py). La inferencia no lo necesita.
 matplotlib>=3.5
